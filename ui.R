@@ -27,7 +27,7 @@ shinyUI(fluidPage(
             htmlOutput("varselect_variant"),
             # DropDown Input for Outcome Variable
             htmlOutput("varselect_outcome"),
-            #htmlOutput("varselect_outcome_positive"),
+            htmlOutput("varselect_outcome_positive"),
             # Checkbox to see if variant is non-metric or numerical
             checkboxInput("nonmetric_checkbox", "Check if outcome variable is non-metric"),
             # Based on Variant Column levels, select Baseline
@@ -42,7 +42,7 @@ shinyUI(fluidPage(
                         tabPanel("Overview",
                                  p('This page contains information
                                    about how the application functions.'),
-                                 verbatimTextOutput('dataframe')),
+                                 verbatimTextOutput('checker')),
                         tabPanel("Data",
                           p('This tab contains a header view of the dataset with
                             statistical descriptors summary.',
@@ -50,7 +50,8 @@ shinyUI(fluidPage(
                         ),
                         tabPanel("Outputs",
                                  p('This page
-                                   contains the results.')
+                                   contains the results.'),
+                                 verbatimTextOutput('dataframe')
                                  ),
                         
             )
