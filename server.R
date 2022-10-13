@@ -1,11 +1,4 @@
-#
-# This is the server logic of a Shiny web application. You can run the
-# application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+
 
 library(DT)
 library(shiny)
@@ -17,7 +10,7 @@ shinyServer(function(input, output) {
   mydata <- reactive({
     if (is.null(input$file)) { return(NULL) }
     else{
-      Dataset <- as.data.frame(read.csv(input$file$datapath ,header=TRUE, sep = ","))
+      Dataset <- as.data.frame(read.csv(input$file$datapath ,header=TRUE, sep = ",", stringsAsFactors = TRUE))
       rownames(Dataset) = Dataset[,1]
       Dataset1 = Dataset[,2:ncol(Dataset)]
       #Dataset = t(Dataset)
@@ -25,6 +18,7 @@ shinyServer(function(input, output) {
     }
   })  
     
+  
   output$dataOverview <- DT::renderDataTable({ mydata() },options = list(pageLength=25))
   
   
@@ -36,7 +30,7 @@ shinyServer(function(input, output) {
     
   })
   
-  variant0 = reactive({mydata()$input$variant0})
+  variant0 = reactive({mydata()[input$variant0]})
   
   output$varselect_outcome <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
@@ -45,14 +39,18 @@ shinyServer(function(input, output) {
     
     })
   
-  ioutcome0 = reactive({mydata()$input$outcome0})
+  #This is a list of elements
+  ioutcome0 = reactive({mydata()[input$outcome0]})
   
-  
+  output$checker <- renderPrint({
+    
+    unique(ioutcome0())
+  })
   
   output$varselect_outcome_positive <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
     # Variable selection:
-    selectInput('outcome0_pos',"Select positive outcome level.", levels(as.factor(input$outcome0)), levels(as.factor(input$outcome0)))
+    selectInput('outcome0_pos',"Select positive outcome level.", unique(ioutcome0()), unique(ioutcome0()))
     
   })
   
@@ -64,12 +62,12 @@ shinyServer(function(input, output) {
     
     discrete_outcome_an <- function(mydata, variant0, baseline0=NA, outcome0, outcome0_pos){
       
-      #variants = variant0 %>% as.factor(.) %>% levels(.); variants
-      variants = unique(as.vector(mydata$variant0))
+      variants = variant0 %>% as.factor(.) %>% levels(.); variants
+      #variants = unique(as.vector(mydata$variant0))
       if (is.na(baseline0)){baseline0 = variants[1]}
       
-      baseline0_1 = mydata %>% 
-        filter(variant0 == baseline0 & outcome0 == outcome0_pos) %>% nrow()
+      baseline0_1 = mydata |> 
+        filter(variant0 == baseline0 & outcome0 == outcome0_pos) |> nrow()
       
       baseline0_2 = mydata %>% filter(variant0 == baseline0) %>% nrow()
       
@@ -189,16 +187,16 @@ shinyServer(function(input, output) {
     output$dataframe <- renderPrint({
       req(input$file)
       
-      outputdf = reactive({discrete_outcome_an(mydata(), variant0 = mydata()$variant0(),
-                                              baseline0 = unique(mydata()$variant0())[0],
-                                              outcome0 = mydata()$ioutcome0(),
-                                              outcome0_pos = unique(mydata()$ioutcome0())[0])})
+      outputdf = reactive({discrete_outcome_an(mydata(), variant0(),
+                                              baseline0 = variant0()[1,],
+                                              outcome0 = ioutcome0(),
+                                              outcome0_pos = ioutpositive())})
       
       as.data.frame(outputdf())
       
       })
     
-    #output$dataframe <- renderPrint(typeof(mydata()$input$variant0))
+    
     
     
 })
