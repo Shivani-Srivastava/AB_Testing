@@ -25,12 +25,15 @@ shinyUI(fluidPage(
             fileInput("file", "Upload input data (CSV file with header)"),
             # DropDown Input for Variant Variable
             htmlOutput("varselect_variant"),
+            # Based on Variant Column levels, select Baseline
+            htmlOutput("varselect_baseline"),
+            
             # DropDown Input for Outcome Variable
             htmlOutput("varselect_outcome"),
             htmlOutput("varselect_outcome_positive"),
             # Checkbox to see if variant is non-metric or numerical
             checkboxInput("nonmetric_checkbox", "Check if outcome variable is non-metric"),
-            # Based on Variant Column levels, select Baseline
+
             
             # Select variable to group visual plots by
           
@@ -42,7 +45,9 @@ shinyUI(fluidPage(
                         tabPanel("Overview",
                                  p('This page contains information
                                    about how the application functions.'),
-                                 verbatimTextOutput('checker')),
+                                 verbatimTextOutput('checking')
+                                 #verbatimTextOutput('checker')
+                                 ),
                         tabPanel("Data",
                           p('This tab contains a header view of the dataset with
                             statistical descriptors summary.',
