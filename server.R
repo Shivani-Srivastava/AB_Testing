@@ -1,4 +1,11 @@
-
+#
+# This is the server logic of a Shiny web application. You can run the
+# application by clicking 'Run App' above.
+#
+# Find out more about building applications with Shiny here:
+#
+#    http://shiny.rstudio.com/
+#
 
 library(DT)
 library(shiny)
@@ -26,12 +33,20 @@ shinyServer(function(input, output) {
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
     # Variable selection:
     selectInput('variant0',"Select variable defining A/B.", colnames(mydata()), colnames(mydata()))
-    
-    
   })
   
-  variant0 = reactive({mydata()[input$variant0]})
+  variant0 = reactive({as.data.frame(mydata()[input$variant0])})
+
+  output$varselect_baseline <- renderUI({
+    if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
+    # Variable selection:
+    selectInput('baseline0',"Select baseline or control variant.", unique(variant0()), unique(variant0()))
+    
+  })
+
+  baseline = reactive({input$baseline0})
   
+      
   output$varselect_outcome <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
     # Variable selection:
@@ -40,12 +55,8 @@ shinyServer(function(input, output) {
     })
   
   #This is a list of elements
-  ioutcome0 = reactive({mydata()[input$outcome0]})
+  ioutcome0 = reactive({as.data.frame(mydata()[input$outcome0])})
   
-  output$checker <- renderPrint({
-    
-    unique(ioutcome0())
-  })
   
   output$varselect_outcome_positive <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
@@ -58,59 +69,72 @@ shinyServer(function(input, output) {
   ioutpositive = reactive({input$outcome0_pos})
   
   
+  output$checking <- renderPrint({
+    variants = unique(as.vector(variant0()))
+    a00 = 0
+    for (a0 in variants){a01 = sum(variant0 %in% a0); a00 = c(a00, a01)}
+    cat(sum(1/a00))
+  })
+  
+  
     # Output defining function which should ideally be stored in a Global.R file
     
-    discrete_outcome_an <- function(mydata, variant0, baseline0=NA, outcome0, outcome0_pos){
+    discrete_outcome_an <- function(mydata, variant0, baseline0, outcome0, outcome0_pos){
       
-      variants = variant0 %>% as.factor(.) %>% levels(.); variants
-      #variants = unique(as.vector(mydata$variant0))
-      if (is.na(baseline0)){baseline0 = variants[1]}
+      #variants = variant0 %>% as.factor(.) %>% levels(.); variants
+      variants = unique(as.vector(variant0))
       
-      baseline0_1 = mydata |> 
-        filter(variant0 == baseline0 & outcome0 == outcome0_pos) |> nrow()
+      baseline0_1 = nrow(filter(mydata,variant0 == baseline0 & outcome0 == outcome0_pos))
       
-      baseline0_2 = mydata %>% filter(variant0 == baseline0) %>% nrow()
+      baseline0_2 = nrow(filter(mydata,variant0 == baseline0))
       
       conv_rate_baseline0 = baseline0_1/baseline0_2; conv_rate_baseline0
       
       # build empty DF to populate: outp_df
       metric = c('Conv rate','Estimated Difference', 'Relative Uplift(%)', 'pooled sample proportion',  'Standard Error of Difference', 'z_score', 'p-value', 'Margin of Error',  'CI-lower', 'CI-upper')
       
-      outcomes = levels(as.factor(outcome0)); outcomes
-      outp_df = matrix(NA, nrow=length(metric), ncol=length(variants))
+      outcomes = unique(outcome0); outcomes
+      outp_df = matrix(0, nrow=length(metric), ncol=length(variants))
       rownames(outp_df) = metric
       colnames(outp_df) = variants
       
-      p_pool = sum(outcome0 == outcome0_pos)/length(outcome0) # "TRUE"
+      
+      # p_pool = sum(ioutcome0() == rep(ioutpositive(), length(ioutcome0())))/length(ioutcome0())
+      # p_pool is not coming
+      p_pool = sum(outcome0 == rep(outcome0_pos, length(outcome0)))/length(outcome0) # "TRUE"
       outp_df[4,] = p_pool %>% round(., 4)
       
-      a00 = NULL
-      for (a0 in variants){a01 = sum(variant0 == a0); a00 = c(a00, a01)}
+      a00 = 0
+      for (a0 in variants){a01 = sum(variant0 %in% rep(a0,length(variant0))); a00 = c(a00, a01)} #ERROR : Comparison of only atomic data types
       se_denom = sum(1/a00) # needed for next step
-      SE_pool = sqrt(p_pool * (1-p_pool) * se_denom)
+      SE_pool = sqrt(p_pool * (1-p_pool) * se_denom) # Depends on p_pool
       # outp_df[4,] = SE_pool
       
-      MOE_pool = SE_pool * qnorm(0.975)
+      MOE_pool = SE_pool * qnorm(0.975) # Depends on p_pool
       outp_df[8,] = MOE_pool %>% round(., 4)
       
       # populate the DF now for each variant as colm
-      for (a0 in variants){ # a0 = variants[1]
-        a1 = which(variants == a0); a1
-        a0_1 = mydata %>% filter(variant0 == a0 & outcome0 == "TRUE") %>% nrow()
-        a0_2 = mydata %>% filter(variant0 == a0) %>% nrow()
+      for (a0 in variants){ # a0 = variants[1] 
+        a1 = which(variants %in% a0); a1
+        #a0_1 = mydata |> filter(variant0 == a0 & outcome0 == "TRUE") |> nrow()
+        a0_1 = nrow(filter(mydata, variant0 %in% a0 & outcome0 == "TRUE"))
+        #a0_2 = mydata |> filter(variant0 %in% a0) |> nrow()
+        a0_2 = nrow(filter(mydata,variant0 %in% a0))
         conv_rate_a0 = a0_1/a0_2
+        
         outp_df[1, a1] = conv_rate_a0 %>% round(., 4)
         
         est_diff_a0 = (conv_rate_a0 - conv_rate_baseline0)
+        
         outp_df[2,a1] = est_diff_a0 %>% round(., 4)
         
         uplift_a0 = (conv_rate_a0 - conv_rate_baseline0)*100/conv_rate_baseline0
         outp_df[3,a1] = uplift_a0 %>% round(., 4)
         
-        zscore_a0 = est_diff_a0/SE_pool
+        zscore_a0 = est_diff_a0/SE_pool # Issue -- depends on p_pool
         outp_df[6,a1] = zscore_a0 %>% round(., 4)
         
-        pval_a0 = pnorm(q = -abs(zscore_a0), mean=0, sd=1)*2
+        pval_a0 = pnorm(q = -abs(zscore_a0), mean=0, sd=1)*2 # Issue -- depends on p_pool
         outp_df[7,a1] = pval_a0 %>% round(., 4)
         
         se_a0 = sqrt(conv_rate_a0 * (1 - conv_rate_a0)/a0_2)
@@ -182,13 +206,37 @@ shinyServer(function(input, output) {
       outp_df } # func ends
     
     
+    #variants = unique(as.vector(variant0))
     
+    #baseline0_1 = mydata |> 
+      #filter(variant0 == baseline0 & outcome0 == outcome0_pos) |> nrow()
+    
+    #baseline0_2 = mydata %>% filter(variant0 == baseline0) %>% nrow()
+    
+    #conv_rate_baseline0 = baseline0_1/baseline0_2; conv_rate_baseline0
+    
+    output$checker <- renderPrint({
+      
+      baseline0_1 = mydata() |> filter(variant0() == baseline() & ioutcome0() == ioutpositive()) |> nrow()
+      baseline0_2 = mydata() %>% filter(variant0() == baseline()) %>% nrow()
+      cat(baseline0_1, baseline0_2)
+      cat(baseline0_1/baseline0_2)
+      
+      conv_rate_a0 = baseline0_1/baseline0_2
+      
+      se_a0 = sqrt(conv_rate_a0 * (1 - conv_rate_a0)/baseline0_2)
+      
+      cat(se_a0)
+      
+      p_pool = sum(ioutcome0() == rep(ioutpositive(), length(ioutcome0())))/length(ioutcome0())
+      cat(p_pool)
+    })
     
     output$dataframe <- renderPrint({
       req(input$file)
       
       outputdf = reactive({discrete_outcome_an(mydata(), variant0(),
-                                              baseline0 = variant0()[1,],
+                                              baseline0 = baseline(),
                                               outcome0 = ioutcome0(),
                                               outcome0_pos = ioutpositive())})
       
