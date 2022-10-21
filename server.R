@@ -35,7 +35,7 @@ shinyServer(function(input, output) {
     selectInput('variant0',"Select variable defining A/B.", colnames(mydata()), colnames(mydata()))
   })
   
-  variant0 = reactive({mydata()[input$variant0]})
+  variant0 = reactive({as.data.frame(mydata()[input$variant0])})
 
   output$varselect_baseline <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
@@ -73,7 +73,7 @@ shinyServer(function(input, output) {
     variants = unique(unlist(variant0()))
     p_pool = sum(ioutcome0() == rep(ioutpositive(), nrow(ioutcome0())))/nrow(ioutcome0())
     #print(head(variant0()))
-    
+    outcome0 = ioutcome0()
     a00 = NULL
     
     #for (a0 in variants){a1 = which(variants %in% a0); cat(a1,'\n')}
@@ -81,13 +81,17 @@ shinyServer(function(input, output) {
     
     #a00 = c(a00, a01)} 
     for (a0 in variants){ # a0 = variants[1] 
-      a1 = which(variants %in% a0); a1
+      #a1 = which(variants %in% a0); a1
       #a0_1 = mydata |> filter(variant0 == a0 & outcome0 == "TRUE") |> nrow()
-      a0_1 = nrow(filter(mydata(), variant0() %in% a0 & outcome0 == "TRUE"))
+      a0_1 = nrow(filter(mydata(), a0 == variant0() & outcome0 == ioutpositive()))
       #a0_2 = mydata |> filter(variant0 %in% a0) |> nrow()
-      a0_2 = nrow(filter(mydata(),variant0() %in% a0))
-      conv_rate_a0 = a0_1/a0_2
-      cat(conv_rate_a0,'\n')}
+      a0_2 = nrow(filter(mydata(),a0 == variant0()))
+      #conv_rate_a0 = a0_1/a0_2
+      cat(a0_2,'\n',a0_1,'\n')
+      #print(a0 %in% as.data.frame(variant0()))
+      #print(filter(mydata(), a0 %in% variant0()))
+      }
+      
   })
   
   
@@ -134,9 +138,9 @@ shinyServer(function(input, output) {
       for (a0 in variants){ # a0 = variants[1] 
         a1 = which(variants %in% a0); a1
         #a0_1 = mydata |> filter(variant0 == a0 & outcome0 == "TRUE") |> nrow()
-        a0_1 = nrow(filter(mydata, variant0 %in% a0 & outcome0 == "TRUE"))
+        a0_1 = nrow(filter(mydata, a0 == variant0 & outcome0 == outcome0_pos))
         #a0_2 = mydata |> filter(variant0 %in% a0) |> nrow()
-        a0_2 = nrow(filter(mydata,variant0 %in% a0))
+        a0_2 = nrow(filter(mydata,a0 == variant0))
         conv_rate_a0 = a0_1/a0_2
         
         outp_df[1, a1] = round(conv_rate_a0, 4)
