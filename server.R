@@ -35,7 +35,7 @@ shinyServer(function(input, output) {
     selectInput('variant0',"Select variable defining A/B.", colnames(mydata()), colnames(mydata()))
   })
   
-  variant0 = reactive({as.data.frame(mydata()[input$variant0])})
+  variant0 = reactive({mydata()[input$variant0]})
 
   output$varselect_baseline <- renderUI({
     if (identical(mydata(), '') || identical(mydata(),data.frame())) return(NULL)
@@ -55,7 +55,7 @@ shinyServer(function(input, output) {
     })
   
   #This is a list of elements
-  ioutcome0 = reactive({as.data.frame(mydata()[input$outcome0])})
+  ioutcome0 = reactive({mydata()[input$outcome0]})
   
   
   output$varselect_outcome_positive <- renderUI({
@@ -70,10 +70,24 @@ shinyServer(function(input, output) {
   
   
   output$checking <- renderPrint({
-    variants = unique(as.vector(variant0()))
-    a00 = 0
-    for (a0 in variants){a01 = sum(variant0 %in% a0); a00 = c(a00, a01)}
-    cat(sum(1/a00))
+    variants = unique(unlist(variant0()))
+    p_pool = sum(ioutcome0() == rep(ioutpositive(), nrow(ioutcome0())))/nrow(ioutcome0())
+    #print(head(variant0()))
+    
+    a00 = NULL
+    
+    #for (a0 in variants){a1 = which(variants %in% a0); cat(a1,'\n')}
+      #a01 = sum(variant0() == a0); a00 = c(a00,a01)} #rep(a0,length(unique(unlist(variant0()))))
+    
+    #a00 = c(a00, a01)} 
+    for (a0 in variants){ # a0 = variants[1] 
+      a1 = which(variants %in% a0); a1
+      #a0_1 = mydata |> filter(variant0 == a0 & outcome0 == "TRUE") |> nrow()
+      a0_1 = nrow(filter(mydata(), variant0() %in% a0 & outcome0 == "TRUE"))
+      #a0_2 = mydata |> filter(variant0 %in% a0) |> nrow()
+      a0_2 = nrow(filter(mydata(),variant0() %in% a0))
+      conv_rate_a0 = a0_1/a0_2
+      cat(conv_rate_a0,'\n')}
   })
   
   
@@ -82,7 +96,7 @@ shinyServer(function(input, output) {
     discrete_outcome_an <- function(mydata, variant0, baseline0, outcome0, outcome0_pos){
       
       #variants = variant0 %>% as.factor(.) %>% levels(.); variants
-      variants = unique(as.vector(variant0))
+      variants = unique(unlist(variant0))
       
       baseline0_1 = nrow(filter(mydata,variant0 == baseline0 & outcome0 == outcome0_pos))
       
@@ -94,24 +108,27 @@ shinyServer(function(input, output) {
       metric = c('Conv rate','Estimated Difference', 'Relative Uplift(%)', 'pooled sample proportion',  'Standard Error of Difference', 'z_score', 'p-value', 'Margin of Error',  'CI-lower', 'CI-upper')
       
       outcomes = unique(outcome0); outcomes
-      outp_df = matrix(0, nrow=length(metric), ncol=length(variants))
+      outp_df = data.frame(matrix(0, nrow=length(metric), ncol=length(unique(unlist(variant0)))))
       rownames(outp_df) = metric
       colnames(outp_df) = variants
       
       
       # p_pool = sum(ioutcome0() == rep(ioutpositive(), length(ioutcome0())))/length(ioutcome0())
-      # p_pool is not coming
-      p_pool = sum(outcome0 == rep(outcome0_pos, length(outcome0)))/length(outcome0) # "TRUE"
-      outp_df[4,] = p_pool %>% round(., 4)
       
-      a00 = 0
-      for (a0 in variants){a01 = sum(variant0 %in% rep(a0,length(variant0))); a00 = c(a00, a01)} #ERROR : Comparison of only atomic data types
+      p_pool = sum(outcome0 == rep(outcome0_pos, nrow(outcome0)))/nrow(outcome0) # "TRUE"
+      outp_df[4, 1:ncol(outp_df)] = round(p_pool, 4)
+      
+      a00 = NULL
+      for (a0 in variants){
+        a01 = sum(variant0 == a0)
+        a00 = c(a00, a01)} #ERROR : Comparison of only atomic data types
+      
       se_denom = sum(1/a00) # needed for next step
       SE_pool = sqrt(p_pool * (1-p_pool) * se_denom) # Depends on p_pool
-      # outp_df[4,] = SE_pool
+      #outp_df[4,] = SE_pool
       
       MOE_pool = SE_pool * qnorm(0.975) # Depends on p_pool
-      outp_df[8,] = MOE_pool %>% round(., 4)
+      outp_df[8, 1:ncol(outp_df)] <- round(MOE_pool, 4)
       
       # populate the DF now for each variant as colm
       for (a0 in variants){ # a0 = variants[1] 
@@ -122,28 +139,28 @@ shinyServer(function(input, output) {
         a0_2 = nrow(filter(mydata,variant0 %in% a0))
         conv_rate_a0 = a0_1/a0_2
         
-        outp_df[1, a1] = conv_rate_a0 %>% round(., 4)
+        outp_df[1, a1] = round(conv_rate_a0, 4)
         
-        est_diff_a0 = (conv_rate_a0 - conv_rate_baseline0)
+        est_diff_a0 <- (conv_rate_a0 - conv_rate_baseline0)
         
-        outp_df[2,a1] = est_diff_a0 %>% round(., 4)
+        outp_df[2,a1] <- round(est_diff_a0, 4)
         
         uplift_a0 = (conv_rate_a0 - conv_rate_baseline0)*100/conv_rate_baseline0
-        outp_df[3,a1] = uplift_a0 %>% round(., 4)
+        outp_df[3,a1] <- round(uplift_a0, 4)
         
         zscore_a0 = est_diff_a0/SE_pool # Issue -- depends on p_pool
-        outp_df[6,a1] = zscore_a0 %>% round(., 4)
+        outp_df[6,a1] <- round(zscore_a0, 4)
         
         pval_a0 = pnorm(q = -abs(zscore_a0), mean=0, sd=1)*2 # Issue -- depends on p_pool
-        outp_df[7,a1] = pval_a0 %>% round(., 4)
+        outp_df[7,a1] <- round(pval_a0, 4)
         
         se_a0 = sqrt(conv_rate_a0 * (1 - conv_rate_a0)/a0_2)
-        outp_df[5, a1] = se_a0 %>% round(., 4)
+        outp_df[5, a1] <- round(se_a0, 4)
         
         ci_low_a0 = conv_rate_a0 - qnorm(0.975) * se_a0
         ci_hi_a0 = conv_rate_a0 + qnorm(0.975) * se_a0
-        outp_df[9,a1] = ci_low_a0 %>% round(., 4)
-        outp_df[10,a1] = ci_hi_a0 %>% round(., 4)
+        outp_df[9,a1] <- round(ci_low_a0, 4)
+        outp_df[10,a1] <- round(ci_hi_a0, 4)
       } # for loop ends
       
       outp_df } # func ends
@@ -205,15 +222,6 @@ shinyServer(function(input, output) {
       
       outp_df } # func ends
     
-    
-    #variants = unique(as.vector(variant0))
-    
-    #baseline0_1 = mydata |> 
-      #filter(variant0 == baseline0 & outcome0 == outcome0_pos) |> nrow()
-    
-    #baseline0_2 = mydata %>% filter(variant0 == baseline0) %>% nrow()
-    
-    #conv_rate_baseline0 = baseline0_1/baseline0_2; conv_rate_baseline0
     
     output$checker <- renderPrint({
       
