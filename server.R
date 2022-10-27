@@ -189,7 +189,7 @@ shinyServer(function(input, output) {
     output$downloadData1 <- downloadHandler(
       filename = function() {"abc_testdata.csv"},
       content = function(file) {
-        write.csv("data/abCtestdta.csv", file)
+        write.csv(read.csv("data/abCtestdta.csv"), file)
       }
     )
     
