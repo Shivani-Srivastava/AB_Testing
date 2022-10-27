@@ -66,7 +66,7 @@ shinyUI(fluidPage(
                                  ),
                         tabPanel("Data",
                          
-                            DT::dataTableOutput('dataOverview')),
+                            DT::dataTableOutput('dataOverview')
                         ),
                         tabPanel("Outputs",
                                  DT::dataTableOutput('dataframe')
