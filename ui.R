@@ -1,11 +1,9 @@
-#
-# This is the user-interface definition of a Shiny web application. You can
-# run the application by clicking 'Run App' above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+########################################################################
+#               A/B Testing - Digital Marketing                        #
+#               Back-end by Prof. Sudhir Voleti                        #
+#                 Shiny by Shivani Srivastava                          #
+########################################################################
+
 
 library(shiny)
 
@@ -30,9 +28,9 @@ shinyUI(fluidPage(
             
             # DropDown Input for Outcome Variable
             htmlOutput("varselect_outcome"),
-            htmlOutput("varselect_outcome_positive"),
+            htmlOutput("varselect_outcome_positive")
             # Checkbox to see if variant is non-metric or numerical
-            checkboxInput("nonmetric_checkbox", "Check if outcome variable is non-metric"),
+            #checkboxInput("nonmetric_checkbox", "Check if outcome variable is non-metric")
 
             
             # Select variable to group visual plots by
@@ -43,20 +41,35 @@ shinyUI(fluidPage(
         mainPanel(
             tabsetPanel(type = "tabs",
                         tabPanel("Overview",
-                                 p('This page contains information
-                                   about how the application functions.'),
-                                 verbatimTextOutput('checking')
+                                 h3('About the Application'),
+                                 p('A/B testing (also known as split testing or bucket testing) is a method of comparing two (or more) 
+                                 versions of a webpage / app / product against each other to determine which one performs better. 
+                                 A/B testing is essentially an experiment where two or more variants are shown
+                                 to users at random, and statistical analysis is used to determine which variation performs better
+                                 for a given conversion goal.
+                                   '), br(),
+                                 p('This application shows the following metrics:'),br(),
+                                   p('Conversion rate '),
+                                  p('Estimated Difference'),
+                                  p('Relative Uplift(%)'),
+                                  p('Pooled Sample Proportion'),
+                                   p('Standard Error of Difference'),
+                                   p('Z - score'),
+                                   p('p-value'),
+                                   p('Margin of Error'),
+                                   p('CI-lower CI-upper'),
+                                 h4(p("Download Sample text file")),
+                                 downloadButton('downloadData1', 'Download sample input file'),br(),br()
+                                 #verbatimTextOutput('checking')
                                  #verbatimTextOutput('checker')
+                                 
                                  ),
                         tabPanel("Data",
-                          p('This tab contains a header view of the dataset with
-                            statistical descriptors summary.',
+                         
                             DT::dataTableOutput('dataOverview')),
                         ),
                         tabPanel("Outputs",
-                                 p('This page
-                                   contains the results.'),
-                                 verbatimTextOutput('dataframe')
+                                 DT::dataTableOutput('dataframe')
                                  ),
                         
             )
