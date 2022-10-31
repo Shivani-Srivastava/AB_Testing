@@ -166,25 +166,31 @@ shinyServer(function(input, output) {
       
       outp_df } # func ends
     
-    
+    outputdf = reactive({
+      discrete_outcome_an(mydata(), variant0(),
+                          baseline0 = baseline(),
+                          outcome0 = ioutcome0(),
+                          outcome0_pos = ioutpositive())
+      
+      
+    })
     
     
     output$dataframe <- DT::renderDataTable({
       req(input$file)
       
-      outputdf = reactive({
-        discrete_outcome_an(mydata(), variant0(),
-                                              baseline0 = baseline(),
-                                              outcome0 = ioutcome0(),
-                                              outcome0_pos = ioutpositive())
-        
-        
-        })
-      
       as.data.frame(outputdf())
       
       })
     
+    output$ABTest_Plots <- renderPlot({if(is.null(input$file)){return(NULL)} else{
+      
+      a <- t(outputdf()[1,1:ncol(outputdf())])
+      
+      barplot(t(a))
+      
+      
+    }})
     
     output$downloadData1 <- downloadHandler(
       filename = function() {"abc_testdata.csv"},
