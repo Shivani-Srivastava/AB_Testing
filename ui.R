@@ -60,8 +60,6 @@ shinyUI(fluidPage(
                                    p('CI-lower CI-upper'),
                                  h4(p("Download Sample text file")),
                                  downloadButton('downloadData1', 'Download sample input file'),br(),br()
-                                 #verbatimTextOutput('checking')
-                                 #verbatimTextOutput('checker')
                                  
                                  ),
                         tabPanel("Data",
@@ -69,7 +67,7 @@ shinyUI(fluidPage(
                             DT::dataTableOutput('dataOverview')
                         ),
                         tabPanel("Outputs",
-                                 
+                                 plotOutput('ABTest_Plots'),
                                  DT::dataTableOutput('dataframe')
                                  ),
                         
